@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kelompok 3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- VARIABEL & RESET --- */
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #050510;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border-width: 2px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: crosshair;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Share Tech Mono', monospace;
+            overflow-x: hidden; 
+            overflow-y: auto; 
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* --- CONTAINER UTAMA --- */
+        .main-frame {
+            position: relative;
+            width: 90%;
+            max-width: 1200px;
+            min-height: 85vh;
+            height: auto;
+            background: rgba(10, 10, 20, 0.8);
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 50px rgba(0, 243, 255, 0.1);
+            clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .main-frame:hover {
+            box-shadow: 0 0 40px rgba(188, 19, 254, 0.4), inset 0 0 30px rgba(188, 19, 254, 0.2);
+            border-color: var(--neon-purple);
+        }
+
+        /* --- HEADER / HUD (POSISI SEMULA) --- */
+        header {
+            padding: 20px;
+            border-bottom: 1px solid var(--neon-cyan);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            flex-shrink: 0;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
+            animation: text-flicker 3s infinite alternate;
+            white-space: nowrap;
+        }
+
+        .status-badge {
+            border: 1px solid var(--neon-cyan);
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            color: var(--neon-cyan);
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 10px var(--neon-cyan);
+            white-space: nowrap;
+        }
+
+        /* --- GALERI FOTO --- */
+        .gallery-viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+            width: 100%;
+            padding: 30px 0;
+        }
+
+        .gallery-track {
+            display: flex;
+            gap: 40px;
+            padding: 0 40px;
+            width: max-content;
+            animation: scroll-left 25s linear infinite;
+        }
+
+        .gallery-track:hover {
+            animation-play-state: paused;
+        }
+
+        .card {
+            width: 300px;
+            height: 400px;
+            position: relative;
+            background: #000;
+            border: 1px solid var(--neon-purple);
+            transform-style: preserve-3d;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27);
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(188, 19, 254, 0.3);
+            flex-shrink: 0;
+        }
+
+        .card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+            transition: all 0.5s ease;
+            filter: grayscale(80%) contrast(1.2);
+        }
+
+        .card:hover img {
+            opacity: 1;
+            filter: grayscale(0%) contrast(1.1);
+        }
+
+        /* --- FITUR WHATSAPP PADA CARD-OVERLAY --- */
+        .card-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(to top, #000, transparent);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            border-top: 1px solid var(--neon-cyan);
+            text-align: center;
+        }
+
+        .card:hover .card-overlay, .card.active .card-overlay {
+            transform: translateY(0);
+        }
+
+        /* Animasi teks naik saat aktif */
+        .card.active .card-title, .card.active .card-desc {
+            transform: translateY(-35px);
+            transition: transform 0.3s ease;
+        }
+
+        .card-title {
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .card-desc {
+            font-size: 0.8rem;
+            color: #ddd;
+        }
+
+        /* Tombol WA (muncul saat kartu diklik) */
+        .wa-btn {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            opacity: 0;
+            visibility: hidden;
+            background: #25d366;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .card.active .wa-btn {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* --- FOOTER (POSISI SEMULA) --- */
+        footer {
+            padding: 20px;
+            border-top: 1px solid var(--neon-cyan);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+
+        .game-btn {
+            background: transparent;
+            border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 12px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 1rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+
+        .game-btn:hover { color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
+        .game-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: var(--neon-cyan); transition: all 0.3s; z-index: -1; }
+        .game-btn:hover::before { left: 0; }
+        .game-btn.secondary { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .game-btn.secondary::before { background: var(--neon-pink); }
+        .game-btn.secondary:hover { box-shadow: 0 0 20px var(--neon-pink); }
+
+        /* --- ANIMASI --- */
+        @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        @keyframes text-flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
+                opacity: 1;
+            }
+            20%, 24%, 55% { text-shadow: none; opacity: 0.5; }
+        }
+
+        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .toast { background: rgba(0, 0, 0, 0.9); border-left: 4px solid var(--neon-cyan); color: #fff; padding: 15px 25px; font-family: 'Share Tech Mono', monospace; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); animation: slideIn 0.3s ease-out forwards; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- OVERLAY START UP (KEMBALI KE SEMULA) --- */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loader { width: 200px; height: 4px; background: #333; margin-top: 20px; position: relative; overflow: hidden; }
+        .loader-bar { width: 0%; height: 100%; background: var(--neon-cyan); position: absolute; transition: width 0.5s; box-shadow: 0 0 10px var(--neon-cyan); }
+
+        /* --- RESPONSIVE CSS --- */
+        @media (max-width: 768px) {
+            body { padding: 15px 0; }
+            .main-frame { width: 95%; min-height: 90vh; }
+            header { padding: 15px 10px; flex-direction: column; gap: 10px; }
+            h1 { font-size: 1.5rem; letter-spacing: 2px; text-align: center; white-space: normal; }
+            .status-badge { font-size: 0.7rem; padding: 4px 10px; }
+            .card { width: 220px; height: 300px; }
+            .game-btn { padding: 10px 15px; font-size: 0.75rem; width: 100%; }
+            #start-overlay h1 { font-size: 2rem !important; } /* Paksa font kecil di HP */
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div id="start-overlay">
+        <h1 style="font-size: 3rem; margin-bottom: 20px;">SYSTEM READY</h1>
+        <div class="loader">
+            <div class="loader-bar" id="loader-bar"></div>
+        </div>
+        <p style="margin-top: 10px; color: var(--neon-cyan);">Kela Tungguan hela...</p>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <main class="main-frame" id="main-ui" style="opacity: 0; transform: scale(0.95);">
+        <header>
+            <div class="logo-area">
+                <h1>Kelompok<span style="color:var(--neon-cyan)">3</span></h1>
+            </div>
+            <div class="status-badge">STATUS: ONLINE</div>
+        </header>
+
+        <section class="gallery-viewport">
+            <div class="gallery-track" id="gallery-track"></div>
+        </section>
+
+        <footer>
+            <button class="game-btn" onclick="toggleAnimation()">
+                <span id="btn-text">PAUSE SYSTEM</span>
+            </button>
+            <button class="game-btn secondary" onclick="warpSpeed()">WARP SPEED</button>
+        </footer>
+    </main>
+
+    <script>
+        /* --- 1. SETUP CANVAS (TETAP) --- */
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, speed = 2, warpMode = false;
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        const stars = [];
+        class Star {
+            constructor() { this.reset(); }
+            reset() { this.x = (Math.random() - 0.5) * width * 2; this.y = (Math.random() - 0.5) * height * 2; this.z = Math.random() * width; this.pz = this.z; }
+            update() { this.z -= speed; if (this.z < 1) { this.reset(); this.z = width; this.pz = this.z; } }
+            draw() {
+                const sx = (this.x / this.z) * (width / 2) + (width / 2);
+                const sy = (this.y / this.z) * (height / 2) + (height / 2);
+                const px = (this.x / this.pz) * (width / 2) + (width / 2);
+                const py = (this.y / this.pz) * (height / 2) + (height / 2);
+                this.pz = this.z;
+                const r = (1 - this.z / width) * 4;
+                ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy);
+                ctx.strokeStyle = warpMode ? `rgb(255, 0, 255, ${1 - this.z/width})` : `rgb(0, 243, 255, ${1 - this.z/width})`;
+                ctx.lineWidth = r; ctx.stroke();
+            }
+        }
+        for (let i = 0; i < 400; i++) stars.push(new Star());
+        function animateBg() { ctx.fillStyle = warpMode ? 'rgba(50, 0, 50, 0.3)' : 'rgba(5, 5, 16, 0.4)'; ctx.fillRect(0, 0, width, height); stars.forEach(star => { star.update(); star.draw(); }); requestAnimationFrame(animateBg); }
+        animateBg();
+
+        /* --- 2. SETUP GALERI --- */
+        const track = document.getElementById('gallery-track');
+        const images = [
+            { src: '/me.jpg', title: 'Dimas Aprilian', desc: 'XI RPL 2', wa: '6285794249679' },
+            { src: '/farid.jpg', title: 'Farid Al-bahri', desc: 'XI RPL 2', wa: '6285864401288' },
+            { src: '/ren.jpg', title: 'Renal maulana', desc: 'XI RPL 2', wa: '6283856447628' },
+            { src: '/.jpg', title: 'Renaldy Drajat Pranajaya', desc: 'XI RPL 2', wa: '6285720946305' },
+            { src: '/.jpg', title: 'Meiska Cahaya Rahayu', desc: 'XI RPL 2', wa: '628xxx' },
+        ];
+
+        function createCard(imgData) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${imgData.src}" alt="${imgData.title}">
+                <div class="card-overlay">
+                    <div class="card-title">${imgData.title}</div>
+                    <div class="card-desc">${imgData.desc}</div>
+                    <a href="https://wa.me/${imgData.wa}" target="_blank" class="wa-btn" onclick="event.stopPropagation()">WhatsApp</a>
+                </div>
+            `;
+            
+            card.addEventListener('click', () => {
+                const wasActive = card.classList.contains('active');
+                document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+                if (!wasActive) {
+                    card.classList.add('active');
+                    showToast(`DATA ${imgData.title} DIAKSES`);
+                }
+            });
+
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left, y = e.clientY - rect.top;
+                const rotateX = ((y - card.offsetHeight / 2) / (card.offsetHeight / 2)) * -10;
+                const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 10;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+            });
+
+            card.addEventListener('mouseleave', () => { card.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale(1)`; });
+            return card;
+        }
+
+        function populateGallery() { [...images, ...images].forEach(img => track.appendChild(createCard(img))); }
+        populateGallery();
+
+        /* --- 3. INTERFACE LOGIC --- */
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast'; toast.innerHTML = `<span>⚠</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+        }
+
+        let isPaused = false;
+        function toggleAnimation() {
+            isPaused = !isPaused;
+            track.style.animationPlayState = isPaused ? 'paused' : 'running';
+            document.getElementById('btn-text').innerText = isPaused ? "RESUME SYSTEM" : "PAUSE SYSTEM";
+        }
+
+        function warpSpeed() {
+            if (warpMode) return; warpMode = true; speed = 50;
+            setTimeout(() => { speed = 2; warpMode = false; }, 2000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const loaderBar = document.getElementById('loader-bar');
+            setTimeout(() => { loaderBar.style.width = "100%"; }, 800);
+            setTimeout(() => {
+                document.getElementById('start-overlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('start-overlay').style.display = 'none';
+                    document.getElementById('main-ui').style.opacity = '1';
+                    document.getElementById('main-ui').style.transform = 'scale(1)';
+                    showToast("SELAMAT DATANG");
+                }, 1000);
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
