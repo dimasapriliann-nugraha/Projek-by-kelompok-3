@@ -13,8 +13,6 @@
             --neon-pink: #ff00ff;
             --neon-purple: #bc13fe;
             --bg-dark: #050510;
-            --glass: rgba(255, 255, 255, 0.05);
-            --border-width: 2px;
         }
 
         * {
@@ -22,6 +20,9 @@
             margin: 0;
             padding: 0;
             cursor: crosshair;
+            /* Mencegah teks terpilih saat menggeser kartu */
+            user-select: none; 
+            -webkit-user-drag: none;
         }
 
         body {
@@ -39,10 +40,7 @@
 
         #bg-canvas {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
         }
 
@@ -52,7 +50,6 @@
             width: 90%;
             max-width: 1200px;
             min-height: 85vh;
-            height: auto;
             background: rgba(10, 10, 20, 0.8);
             border: 1px solid var(--neon-cyan);
             box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 50px rgba(0, 243, 255, 0.1);
@@ -61,23 +58,19 @@
             flex-direction: column;
             overflow: hidden;
             backdrop-filter: blur(5px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
             margin: 20px 0;
         }
 
-        .main-frame:hover {
-            box-shadow: 0 0 40px rgba(188, 19, 254, 0.4), inset 0 0 30px rgba(188, 19, 254, 0.2);
-            border-color: var(--neon-purple);
-        }
-
-        /* --- HEADER / HUD (POSISI SEMULA) --- */
+        /* --- HEADER (TETAP DI TENGAH SESUAI PERMINTAAN) --- */
         header {
-            padding: 20px;
+            padding: 30px 20px;
             border-bottom: 1px solid var(--neon-cyan);
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            background: linear-gradient(90deg, transparent, rgba(0, 243, 255, 0.1), transparent);
+            gap: 15px;
+            background: linear-gradient(180deg, transparent, rgba(0, 243, 255, 0.05));
             flex-shrink: 0;
         }
 
@@ -87,22 +80,23 @@
             text-transform: uppercase;
             letter-spacing: 4px;
             color: #fff;
-            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
+            text-shadow: 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
             animation: text-flicker 3s infinite alternate;
-            white-space: nowrap;
+            margin: 0;
         }
 
         .status-badge {
             border: 1px solid var(--neon-cyan);
-            padding: 5px 15px;
-            font-size: 0.8rem;
+            padding: 8px 25px;
+            font-size: 0.9rem;
             color: var(--neon-cyan);
-            background: rgba(0, 243, 255, 0.1);
-            box-shadow: 0 0 10px var(--neon-cyan);
-            white-space: nowrap;
+            background: rgba(0, 243, 255, 0.05);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        /* --- GALERI FOTO --- */
+        /* --- GALERI (VIEWPORT UNTUK GESER) --- */
         .gallery-viewport {
             flex: 1;
             position: relative;
@@ -111,8 +105,11 @@
             align-items: center;
             mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
             -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
-            width: 100%;
-            padding: 30px 0;
+            cursor: grab; /* Indikator bisa ditarik */
+        }
+
+        .gallery-viewport:active {
+            cursor: grabbing;
         }
 
         .gallery-track {
@@ -120,11 +117,8 @@
             gap: 40px;
             padding: 0 40px;
             width: max-content;
-            animation: scroll-left 25s linear infinite;
-        }
-
-        .gallery-track:hover {
-            animation-play-state: paused;
+            will-change: transform;
+            /* Animasi CSS dihapus, diganti logika JS agar bisa di-drag */
         }
 
         .card {
@@ -133,167 +127,94 @@
             position: relative;
             background: #000;
             border: 1px solid var(--neon-purple);
-            transform-style: preserve-3d;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.27);
-            cursor: pointer;
-            box-shadow: 0 0 15px rgba(188, 19, 254, 0.3);
+            transition: transform 0.4s ease;
             flex-shrink: 0;
+            pointer-events: auto;
         }
 
+        /* FITUR WARNA TETAP SAMA (Grayscale ke Berwarna) */
         .card img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.8;
+            width: 100%; height: 100%; object-fit: cover;
+            opacity: 0.6; filter: grayscale(100%);
             transition: all 0.5s ease;
-            filter: grayscale(80%) contrast(1.2);
+            pointer-events: none; /* Supaya tidak mengganggu drag */
         }
 
-        .card:hover img {
-            opacity: 1;
-            filter: grayscale(0%) contrast(1.1);
+        .card:hover img, .card.active img {
+            opacity: 1; filter: grayscale(0%);
         }
 
-        /* --- FITUR WHATSAPP PADA CARD-OVERLAY --- */
         .card-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 15px;
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 15px;
             background: linear-gradient(to top, #000, transparent);
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-            border-top: 1px solid var(--neon-cyan);
-            text-align: center;
+            transform: translateY(100%); transition: transform 0.3s ease;
+            border-top: 1px solid var(--neon-cyan); text-align: center;
         }
 
         .card:hover .card-overlay, .card.active .card-overlay {
             transform: translateY(0);
         }
 
-        /* Animasi teks naik saat aktif */
         .card.active .card-title, .card.active .card-desc {
-            transform: translateY(-35px);
-            transition: transform 0.3s ease;
+            transform: translateY(-40px); transition: transform 0.3s ease;
         }
 
-        .card-title {
-            color: var(--neon-cyan);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.2rem;
-            margin-bottom: 5px;
-        }
+        .card-title { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; font-size: 1.2rem; }
+        .card-desc { font-size: 0.8rem; color: #ddd; margin-bottom: 5px; }
 
-        .card-desc {
-            font-size: 0.8rem;
-            color: #ddd;
-        }
-
-        /* Tombol WA (muncul saat kartu diklik) */
-        .wa-btn {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
+        .card-btns {
+            position: absolute; bottom: 15px; left: 50%;
             transform: translateX(-50%) translateY(20px);
-            opacity: 0;
-            visibility: hidden;
-            background: #25d366;
-            color: white;
-            padding: 6px 15px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-size: 0.75rem;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            white-space: nowrap;
+            display: flex; gap: 10px; opacity: 0; visibility: hidden; transition: all 0.3s ease;
         }
 
-        .card.active .wa-btn {
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(-50%) translateY(0);
+        .card.active .card-btns {
+            opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
         }
 
-        /* --- FOOTER (POSISI SEMULA) --- */
+        .social-btn {
+            padding: 6px 12px; border-radius: 4px; text-decoration: none;
+            font-size: 0.7rem; font-weight: bold; color: #fff; border: 1px solid #fff;
+        }
+        .wa-btn { background: #25d366; box-shadow: 0 0 10px #25d366; }
+        .ig-btn { background: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink); }
+
+        /* --- FOOTER --- */
         footer {
-            padding: 20px;
-            border-top: 1px solid var(--neon-cyan);
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            flex-shrink: 0;
+            padding: 20px; border-top: 1px solid var(--neon-cyan);
+            display: flex; justify-content: center; gap: 20px; background: rgba(0, 0, 0, 0.5);
         }
 
         .game-btn {
-            background: transparent;
-            border: 2px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            padding: 12px 30px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-            font-size: 1rem;
-            text-transform: uppercase;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            transition: all 0.3s;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            background: transparent; border: 2px solid var(--neon-cyan); color: var(--neon-cyan);
+            padding: 12px 30px; font-family: 'Orbitron', sans-serif; font-weight: bold;
+            cursor: pointer; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
         }
 
-        .game-btn:hover { color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
-        .game-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: var(--neon-cyan); transition: all 0.3s; z-index: -1; }
-        .game-btn:hover::before { left: 0; }
-        .game-btn.secondary { border-color: var(--neon-pink); color: var(--neon-pink); }
-        .game-btn.secondary::before { background: var(--neon-pink); }
-        .game-btn.secondary:hover { box-shadow: 0 0 20px var(--neon-pink); }
+        /* --- START OVERLAY --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000;
+            z-index: 2000; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; transition: opacity 1s ease;
+        }
+        #start-overlay h1 { font-size: 3rem; margin-bottom: 20px; }
 
-        /* --- ANIMASI --- */
-        @keyframes scroll-left { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .loader { width: 200px; height: 4px; background: #333; margin-top: 20px; position: relative; overflow: hidden; }
+        .loader-bar { width: 0%; height: 100%; background: var(--neon-cyan); position: absolute; transition: width 0.5s; }
+
         @keyframes text-flicker {
-            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink);
-                opacity: 1;
-            }
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px var(--neon-pink), 0 0 40px var(--neon-pink); opacity: 1; }
             20%, 24%, 55% { text-shadow: none; opacity: 0.5; }
         }
 
-        #toast-container { position: fixed; bottom: 30px; right: 30px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
-        .toast { background: rgba(0, 0, 0, 0.9); border-left: 4px solid var(--neon-cyan); color: #fff; padding: 15px 25px; font-family: 'Share Tech Mono', monospace; box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); animation: slideIn 0.3s ease-out forwards; display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
+        #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 1000; }
+        .toast { background: rgba(0, 0, 0, 0.9); border-left: 4px solid var(--neon-cyan); color: #fff; padding: 15px 25px; margin-top: 10px; animation: slideIn 0.3s ease-out forwards; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* --- OVERLAY START UP (KEMBALI KE SEMULA) --- */
-        #start-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 2000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 1s ease;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loader { width: 200px; height: 4px; background: #333; margin-top: 20px; position: relative; overflow: hidden; }
-        .loader-bar { width: 0%; height: 100%; background: var(--neon-cyan); position: absolute; transition: width 0.5s; box-shadow: 0 0 10px var(--neon-cyan); }
-
-        /* --- RESPONSIVE CSS --- */
         @media (max-width: 768px) {
-            body { padding: 15px 0; }
-            .main-frame { width: 95%; min-height: 90vh; }
-            header { padding: 15px 10px; flex-direction: column; gap: 10px; }
-            h1 { font-size: 1.5rem; letter-spacing: 2px; text-align: center; white-space: normal; }
-            .status-badge { font-size: 0.7rem; padding: 4px 10px; }
+            h1 { font-size: 1.8rem; }
+            #start-overlay h1 { font-size: 2rem !important; }
             .card { width: 220px; height: 300px; }
-            .game-btn { padding: 10px 15px; font-size: 0.75rem; width: 100%; }
-            #start-overlay h1 { font-size: 2rem !important; } /* Paksa font kecil di HP */
         }
     </style>
 </head>
@@ -302,7 +223,7 @@
     <canvas id="bg-canvas"></canvas>
 
     <div id="start-overlay">
-        <h1 style="font-size: 3rem; margin-bottom: 20px;">SYSTEM READY</h1>
+        <h1>SYSTEM READY</h1>
         <div class="loader">
             <div class="loader-bar" id="loader-bar"></div>
         </div>
@@ -313,29 +234,25 @@
 
     <main class="main-frame" id="main-ui" style="opacity: 0; transform: scale(0.95);">
         <header>
-            <div class="logo-area">
-                <h1>Kelompok<span style="color:var(--neon-cyan)">3</span></h1>
-            </div>
+            <h1>Kelompok<span style="color:var(--neon-cyan)">3</span></h1>
             <div class="status-badge">STATUS: ONLINE</div>
         </header>
 
-        <section class="gallery-viewport">
-            <div class="gallery-track" id="gallery-track"></div>
+        <section class="gallery-viewport" id="viewport">
+            <div class="gallery-track" id="track"></div>
         </section>
 
         <footer>
-            <button class="game-btn" onclick="toggleAnimation()">
-                <span id="btn-text">PAUSE SYSTEM</span>
-            </button>
-            <button class="game-btn secondary" onclick="warpSpeed()">WARP SPEED</button>
+            <button class="game-btn" onclick="toggleAnimation()"><span id="btn-text">PAUSE SYSTEM</span></button>
+            <button class="game-btn" style="border-color: var(--neon-pink); color: var(--neon-pink);" onclick="warpSpeed()">WARP SPEED</button>
         </footer>
     </main>
 
     <script>
-        /* --- 1. SETUP CANVAS (TETAP) --- */
+        // --- 1. BACKGROUND STARS ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
-        let width, height, speed = 2, warpMode = false;
+        let width, height, starSpeed = 2, warpMode = false;
         function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize); resize();
 
@@ -343,93 +260,148 @@
         class Star {
             constructor() { this.reset(); }
             reset() { this.x = (Math.random() - 0.5) * width * 2; this.y = (Math.random() - 0.5) * height * 2; this.z = Math.random() * width; this.pz = this.z; }
-            update() { this.z -= speed; if (this.z < 1) { this.reset(); this.z = width; this.pz = this.z; } }
+            update() { this.z -= starSpeed; if (this.z < 1) { this.reset(); this.z = width; this.pz = this.z; } }
             draw() {
                 const sx = (this.x / this.z) * (width / 2) + (width / 2);
                 const sy = (this.y / this.z) * (height / 2) + (height / 2);
                 const px = (this.x / this.pz) * (width / 2) + (width / 2);
                 const py = (this.y / this.pz) * (height / 2) + (height / 2);
                 this.pz = this.z;
-                const r = (1 - this.z / width) * 4;
                 ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(sx, sy);
-                ctx.strokeStyle = warpMode ? `rgb(255, 0, 255, ${1 - this.z/width})` : `rgb(0, 243, 255, ${1 - this.z/width})`;
-                ctx.lineWidth = r; ctx.stroke();
+                ctx.strokeStyle = warpMode ? `rgb(255,0,255,${1-this.z/width})` : `rgb(0,243,255,${1-this.z/width})`;
+                ctx.lineWidth = (1 - this.z / width) * 4; ctx.stroke();
             }
         }
         for (let i = 0; i < 400; i++) stars.push(new Star());
-        function animateBg() { ctx.fillStyle = warpMode ? 'rgba(50, 0, 50, 0.3)' : 'rgba(5, 5, 16, 0.4)'; ctx.fillRect(0, 0, width, height); stars.forEach(star => { star.update(); star.draw(); }); requestAnimationFrame(animateBg); }
+        function animateBg() { ctx.fillStyle = warpMode ? 'rgba(50,0,50,0.3)' : 'rgba(5,5,16,0.4)'; ctx.fillRect(0,0,width,height); stars.forEach(s => { s.update(); s.draw(); }); requestAnimationFrame(animateBg); }
         animateBg();
 
-        /* --- 2. SETUP GALERI --- */
-        const track = document.getElementById('gallery-track');
+        // --- 2. DRAGGABLE INFINITE GALLERY LOGIC ---
+        const viewport = document.getElementById('viewport');
+        const track = document.getElementById('track');
         const images = [
-            { src: '/me.jpg', title: 'Dimas Aprilian', desc: 'XI RPL 2', wa: '6285794249679' },
-            { src: '/farid.jpg', title: 'Farid Al-bahri', desc: 'XI RPL 2', wa: '6285864401288' },
-            { src: '/ren.jpg', title: 'Renal maulana', desc: 'XI RPL 2', wa: '6283856447628' },
-            { src: '/renaldi.jpg', title: 'Renaldy Drajat Pranajaya', desc: 'XI RPL 2', wa: '6285720946305' },
-            { src: '/eka.jpg', title: 'Meiska Cahaya Rahayu', desc: 'XI RPL 2', wa: '628xxx' },
+            { src: 'me.jpg', title: 'Dimas', desc: 'XI RPL 2', wa: '6285794249679', ig: 'rahapcb' },
+            { src: 'farid.jpg', title: 'Farid', desc: 'XI RPL 2', wa: '6285864401288', ig: 'ryzz_1808' },
+            { src: 'ren.jpg', title: 'Renal', desc: 'XI RPL 2', wa: '6283856447628', ig: 'ran77.5' },
+            { src: 'renaldi.jpg', title: 'Renaldy', desc: 'XI RPL 2', wa: '6285720946305', ig: 'aldyrenaldy2707' },
+            { src: 'eka.jpg', title: 'Meiska', desc: 'XI RPL 2', wa: '6281521909973', ig: 'mskachyarhayu05' },
         ];
 
-        function createCard(imgData) {
+        function createCard(data) {
             const card = document.createElement('div');
             card.className = 'card';
             card.innerHTML = `
-                <img src="${imgData.src}" alt="${imgData.title}">
+                <img src="${data.src}" alt="${data.title}">
                 <div class="card-overlay">
-                    <div class="card-title">${imgData.title}</div>
-                    <div class="card-desc">${imgData.desc}</div>
-                    <a href="https://wa.me/${imgData.wa}" target="_blank" class="wa-btn" onclick="event.stopPropagation()">WhatsApp</a>
+                    <div class="card-title">${data.title}</div>
+                    <div class="card-desc">${data.desc}</div>
+                    <div class="card-btns">
+                        <a href="https://wa.me/${data.wa}" target="_blank" class="social-btn wa-btn" onclick="event.stopPropagation()">WhatsApp</a>
+                        <a href="https://instagram.com/${data.ig}" target="_blank" class="social-btn ig-btn" onclick="event.stopPropagation()">Instagram</a>
+                    </div>
                 </div>
             `;
-            
-            card.addEventListener('click', () => {
-                const wasActive = card.classList.contains('active');
+            card.addEventListener('click', (e) => {
+                if (isDragging) return; // Jangan buka kartu kalau cuma mau nge-drag
+                const isActive = card.classList.contains('active');
                 document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-                if (!wasActive) {
+                if (!isActive) {
                     card.classList.add('active');
-                    showToast(`DATA ${imgData.title} DIAKSES`);
+                    isPaused = true; // Otomatis diam pas kartu diklik
+                } else {
+                    isPaused = false;
                 }
             });
-
-            card.addEventListener('mousemove', (e) => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left, y = e.clientY - rect.top;
-                const rotateX = ((y - card.offsetHeight / 2) / (card.offsetHeight / 2)) * -10;
-                const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 10;
-                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
-            });
-
-            card.addEventListener('mouseleave', () => { card.style.transform = `perspective(1000px) rotateX(0) rotateY(0) scale(1)`; });
             return card;
         }
 
-        function populateGallery() { [...images, ...images].forEach(img => track.appendChild(createCard(img))); }
-        populateGallery();
+        // Duplikasi untuk loop tak terbatas
+        function populate() { [...images, ...images, ...images].forEach(img => track.appendChild(createCard(img))); }
+        populate();
 
-        /* --- 3. INTERFACE LOGIC --- */
-        function showToast(message) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast'; toast.innerHTML = `<span>⚠</span> ${message}`;
-            container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
+        let currentPos = 0;
         let isPaused = false;
-        function toggleAnimation() {
-            isPaused = !isPaused;
-            track.style.animationPlayState = isPaused ? 'paused' : 'running';
-            document.getElementById('btn-text').innerText = isPaused ? "RESUME SYSTEM" : "PAUSE SYSTEM";
+        let autoScrollSpeed = 1.5;
+
+        // Logika Geser (Drag)
+        let isDragging = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        viewport.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            isPaused = true; // Berhenti pas dipegang
+            startX = e.pageX - track.offsetLeft;
+            scrollLeft = currentPos;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            // Cek apakah ada kartu yang lagi aktif, kalau tidak ada lanjut jalan
+            const anyActive = document.querySelector('.card.active');
+            if (!anyActive && !sysPausedManual) isPaused = false;
+        });
+
+        viewport.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const x = e.pageX - track.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            currentPos = scrollLeft + walk;
+        });
+
+        // Touch support (HP)
+        viewport.addEventListener('touchstart', (e) => {
+            isDragging = true; isPaused = true;
+            startX = e.touches[0].pageX - track.offsetLeft;
+            scrollLeft = currentPos;
+        });
+        viewport.addEventListener('touchend', () => {
+            isDragging = false;
+            if (!document.querySelector('.card.active') && !sysPausedManual) isPaused = false;
+        });
+        viewport.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const x = e.touches[0].pageX - track.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            currentPos = scrollLeft + walk;
+        });
+
+        // Loop Animasi Ticker
+        function updateGallery() {
+            if (!isPaused) {
+                currentPos -= autoScrollSpeed;
+            }
+
+            // Loop reset (supaya ga pernah abis)
+            const trackWidth = track.scrollWidth / 3;
+            if (currentPos <= -trackWidth * 2) currentPos = -trackWidth;
+            if (currentPos > 0) currentPos = -trackWidth;
+
+            track.style.transform = `translateX(${currentPos}px)`;
+            requestAnimationFrame(updateGallery);
+        }
+        updateGallery();
+
+        // --- 3. UI CONTROLS ---
+        function showToast(m) {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div'); t.className = 'toast'; t.innerText = m;
+            c.appendChild(t); setTimeout(() => t.remove(), 3000);
         }
 
-        function warpSpeed() {
-            if (warpMode) return; warpMode = true; speed = 50;
-            setTimeout(() => { speed = 2; warpMode = false; }, 2000);
+        let sysPausedManual = false;
+        function toggleAnimation() {
+            sysPausedManual = !sysPausedManual;
+            isPaused = sysPausedManual;
+            document.getElementById('btn-text').innerText = sysPausedManual ? "RESUME SYSTEM" : "PAUSE SYSTEM";
         }
+
+        function warpSpeed() { if(warpMode) return; warpMode = true; starSpeed = 50; autoScrollSpeed = 15; setTimeout(() => { starSpeed = 2; autoScrollSpeed = 1.5; warpMode = false; }, 2000); }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const loaderBar = document.getElementById('loader-bar');
-            setTimeout(() => { loaderBar.style.width = "100%"; }, 800);
+            setTimeout(() => document.getElementById('loader-bar').style.width = "100%", 500);
             setTimeout(() => {
                 document.getElementById('start-overlay').style.opacity = '0';
                 setTimeout(() => {
